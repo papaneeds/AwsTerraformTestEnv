@@ -1,4 +1,4 @@
-data "aws_ami" "development_ami" {
+data "aws_ami" "training_ami" {
   most_recent = true
   owners      = ["099720109477"]
   filter {
