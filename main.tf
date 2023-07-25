@@ -92,7 +92,7 @@ resource "aws_instance" "training_node" {
   user_data              = file("userdata.tpl")
 
   root_block_device {
-    volume_size = 10
+    volume_size = 30
   }
 
   provisioner "local-exec" {
