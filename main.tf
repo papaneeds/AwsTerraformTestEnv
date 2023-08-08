@@ -70,7 +70,7 @@ resource "aws_vpc_security_group_egress_rule" "training_sg_egress_rule" {
 resource "aws_vpc_security_group_ingress_rule" "training_sg_ingress_rule" {
   security_group_id = aws_security_group.training_sg.id
 
-  cidr_ipv4   = "104.222.114.127/32"
+  cidr_ipv4   = "${var.aws_access_ip}/32"
   ip_protocol = "-1"
 
   tags = {
