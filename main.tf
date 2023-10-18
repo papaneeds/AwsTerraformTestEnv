@@ -44,7 +44,7 @@ resource "aws_ec2_transit_gateway_multicast_domain" "training-multicast-domain" 
 }
 
 ###################################################################
-# attach vpc and subnet 0 to transit gateway and multicast domain #
+# attach vpc 0 and subnet 0 to transit gateway and multicast domain #
 ###################################################################
 
 resource "aws_ec2_transit_gateway_vpc_attachment" "training-multicast-tgw-vpc-attachment_0" {
@@ -89,12 +89,12 @@ resource "aws_ec2_transit_gateway_multicast_domain_association" "training-multic
 
 resource "aws_route" "route_0_to_1" {
   route_table_id         = module.public_subnet[0].training_public_rt_id
-  destination_cidr_block = module.public_subnet[1].public_subnet_cidr_block
+  destination_cidr_block = module.public_subnet[1].training_public_subnet_cidr_block
   transit_gateway_id = aws_ec2_transit_gateway.training-multicast-tgw.id
 }
 
 resource "aws_route" "route_1_to_0" {
   route_table_id         = module.public_subnet[1].training_public_rt_id
-  destination_cidr_block = module.public_subnet[0].public_subnet_cidr_block
+  destination_cidr_block = module.public_subnet[0].training_public_subnet_cidr_block
   transit_gateway_id = aws_ec2_transit_gateway.training-multicast-tgw.id
 }

@@ -14,7 +14,7 @@ output "training_vpc_id" {
     value = aws_vpc.training_vpc.id
 }
 
-output "public_subnet_cidr_block" {
+output "training_public_subnet_cidr_block" {
     value = aws_subnet.training_public_subnet.cidr_block
 }
 

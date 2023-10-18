@@ -54,6 +54,15 @@ resource "aws_route_table_association" "training_public_rt_training_public_subne
   route_table_id = aws_route_table.training_public_rt.id
 }
 
+##################################################################
+# NACL                                                           #
+##################################################################
+
+# The NACL apparently has to be modified for multicast.
+#
+
+# 
+
 
 ###################################################################
 # Security Groups, ingress and egress rules for EC2 Instances     #
@@ -69,7 +78,7 @@ resource "aws_security_group" "training_sg" {
   }
 }
 
-# Allow all outbound traffic
+# Allow all outbound traffic to everywhere
 resource "aws_vpc_security_group_egress_rule" "training_sg_egress_rule" {
   security_group_id = aws_security_group.training_sg.id
 
@@ -80,6 +89,56 @@ resource "aws_vpc_security_group_egress_rule" "training_sg_egress_rule" {
     Name = "training_sg_egress_rule-${var.count_index}"
   }
 }
+
+# Explicitly allow all UDP to the specific multicast address.
+# You would think that this was already happening by the "Allow all outbound traffic everywhere"
+# but apparently not for multicast!
+/*
+resource "aws_vpc_security_group_egress_rule" "training_sg_egress_rule_multicast_239_1_1_1_udp" {
+  security_group_id = aws_security_group.training_sg.id
+
+  cidr_ipv4   = "239.1.1.1/32"
+  ip_protocol = "udp"
+  from_port = 1234
+  to_port = 1234
+
+  tags = {
+    Name = "training_sg_egress_rule_multicast_239_1_1_1_udp-${var.count_index}"
+  }
+}
+*/
+
+# Explicitly allow all IGMP to the transit gateway
+# You would think that this was already happening by the "Allow all outbound traffic everywhere"
+# but apparently not for multicast!
+/*
+resource "aws_vpc_security_group_egress_rule" "training_sg_egress_rule_multicast_igmp_tgw" {
+  security_group_id = aws_security_group.training_sg.id
+
+  cidr_ipv4   = "0.0.0.0/32"
+  ip_protocol = "2"
+
+  tags = {
+    Name = "training_sg_egress_rule_multicast_igmp_tgw-${var.count_index}"
+  }
+}
+*/
+
+# Explicitly allow IGMP to the specific multicast address.
+# You would think that this was already happening by the "Allow all outbound traffic everywhere"
+# but apparently not for multicast!
+/*
+resource "aws_vpc_security_group_egress_rule" "training_sg_egress_rule_multicast_239_1_1_1_igmp" {
+  security_group_id = aws_security_group.training_sg.id
+
+  cidr_ipv4   = "239.1.1.1/32"
+  ip_protocol = "2"
+
+  tags = {
+    Name = "training_sg_egress_rule_multicast_239_1_1_1_igmp-${var.count_index}"
+  }
+}
+*/
 
 
 # This ingress rule allows all protocol access from the specific ip address
@@ -108,19 +167,56 @@ resource "aws_vpc_security_group_ingress_rule" "training_sg_ingress_rule_all_tra
   }
 }
 
+# This ingress rule allows for all multicast traffic.
+# See https://docs.aws.amazon.com/vpc/latest/tgw/how-multicast-works.html
+resource "aws_vpc_security_group_ingress_rule" "training_sg_ingress_rule_all_multicast_traffic" {
+  security_group_id = aws_security_group.training_sg.id
+
+  cidr_ipv4   = "224.0.0.0/4"
+  ip_protocol = "udp"
+  # Allow all ports according to the min and max 
+  # from https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers
+  from_port = 0
+  to_port = 49151
+
+  tags = {
+    Name = "training_sg_ingress_rule_all_multicast_traffic-${var.count_index}"
+  }
+}
+
+
+# This ingress rule allows for IGMP query packets to come from the transit gateway
+# See  https://docs.aws.amazon.com/vpc/latest/tgw/tgw-multicast-overview.html
+# "The transit gateway sends membership query packets to all the IGMP members so 
+# that it can track multicast group membership. The source IP of these IGMP 
+# query packets is 0.0.0.0/32, and the destination IP is 224.0.0.1/32 and 
+# the protocol is 2. Your security group configuration on the IGMP hosts 
+# (instances), and any ACLs configuration on the host subnets must allow 
+# these IGMP protocol messages."
+# and see https://docs.aws.amazon.com/vpc/latest/tgw/how-multicast-works.html
+resource "aws_vpc_security_group_ingress_rule" "training_sg_ingress_rule_igmp_query" {
+  security_group_id = aws_security_group.training_sg.id
+
+  cidr_ipv4   = "0.0.0.0/32"
+  ip_protocol = "2"
+
+  tags = {
+    Name = "training_sg_ingress_rule_igmp_query-${var.count_index}"
+  }
+}
+
 ################################################
 #  EC2 Instances                               #
 ################################################
 
 resource "aws_instance" "training_node" {
   count = var.num_wintak_machines
-  instance_type          = "t2.large"
-#  ami                    = data.aws_ami.training_ami.id
-  ami = "ami-0b387ae0c58e12b95"
+  instance_type          = "t3.medium"
+  ami = "ami-00a472ea118a9486e"
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.training_sg.id]
   subnet_id              = aws_subnet.training_public_subnet.id
-  #user_data              = file("userdata.tpl")
+  source_dest_check      = false
 
   root_block_device {
     volume_size = 30
